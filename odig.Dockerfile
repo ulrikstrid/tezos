@@ -1,40 +1,21 @@
-FROM ubuntu
+FROM ocaml/opam:ubuntu-21.04-ocaml-4.10
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
-    && apt-get install -y \
-    rsync git m4 build-essential \
-    patch unzip wget pkg-config \
-    libgmp-dev libev-dev libhidapi-dev \
-    libffi-dev jq libpcre3-dev \
-    libsqlite3-dev zlib1g-dev \
-    curl postgresql sudo \
-    opam
 
-RUN adduser --disabled-password --gecos '' docker
-RUN adduser docker sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-
-USER docker
-
-WORKDIR /home/docker
-
-# TODO add to list
-RUN sudo apt-get install -y autoconf
-
-RUN opam init --bare --disable-sandboxing
-
-RUN cd ../ && opam switch create 4.10.2 && opam install comby -y
-
-RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.44.0 -y
+ENV OPAMYES=true
 ENV OPAMDEPEXTYES=true
 
-RUN ocaml_version=4.10.2
-RUN opam_version=2.0
-RUN recommended_rust_version=1.44.0
+RUN opam switch create . ocaml-base-compiler.4.10.2
+RUN opam depext conf-pkg-config conf-m4 conf-libssl conf-rust conf-gmp conf-libffi conf-libev
+
+# RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.44.0 -y
+
+ENV ocaml_version=4.10.2
+ENV opam_version=2.0
+ENV recommended_rust_version=1.44.0
 
 ## full_opam_repository is a commit hash of the public OPAM repository, i.e.
 ## https://github.com/ocaml/opam-repository
-RUN full_opam_repository_tag=521b2b782c6e74f8e02e08b3bb4d7aef68428651
+ENV full_opam_repository_tag=521b2b782c6e74f8e02e08b3bb4d7aef68428651
 
 ## opam_repository is an additional, tezos-specific opam repository.
 ## This value MUST be the same as `build_deps_image_version` in `.gitlab-ci.yml
@@ -50,8 +31,14 @@ RUN opam repository set-url tezos --dont-select $opam_repository || \
 
 RUN opam update --repositories --development
 
+RUN opam pin add odoc https://github.com/ocaml/odoc.git#2.0.0-beta3 -y
 RUN opam install odig -y
 
+COPY ./src ./src
+
+#RUN opam pin add tezos-protocol-alpha ./src/proto_alpha/lib_protocol/tezos-protocol-alpha.opam -y
+RUN opam install ./src/proto_alpha/lib_protocol/tezos-protocol-alpha.opam -y
+
 RUN opam exec -- odig odoc
-RUN opam exec -- odoc support-files -o ~/.opam/4.10.2/var/cache/odig/html/_odoc-theme
-RUN opam exec -- odig doc
+
+ENTRYPOINT [ "/bin/sh" ]
