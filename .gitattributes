@@ -1,4 +1,0 @@
-.gitignore	export-ignore
-.gitattributes	export-ignore
-.gitlab-ci.yml	export-ignore
-src/lib_version/current_git_info.ml	export-subst
